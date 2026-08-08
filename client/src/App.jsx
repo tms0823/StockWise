@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Stock from './pages/Stock.jsx';
 import MarketOverview from './pages/MarketOverview.jsx';
 import StockChart from './pages/StockChart.jsx';
+import StockSearch from './pages/StockSearch.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 function App() {
@@ -45,6 +46,14 @@ function App() {
         element={
           <ProtectedRoute>
             <MarketOverview />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/search"
+        element={
+          <ProtectedRoute>
+            <StockSearch />
           </ProtectedRoute>
         }
       />

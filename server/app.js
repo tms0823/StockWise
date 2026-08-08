@@ -5,6 +5,7 @@ const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
 const stockRoutes = require('./routes/stockRoutes');
 const marketRoutes = require('./routes/marketRoutes');
+const stockListingRoutes = require('./routes/stockListingRoutes');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -19,6 +20,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/stocks', stockRoutes);
 app.use('/api/market', marketRoutes);
+app.use('/api/companies', stockListingRoutes);
 
 // 404 handler for unknown API routes
 app.use(notFound);

@@ -35,9 +35,14 @@ function Dashboard() {
           <strong>Virtual Balance:</strong> {user.virtualBalance}
         </p>
       </div>
-      <button type="button" className="btn" onClick={handleLogout}>
-        Logout
-      </button>
+      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button type="button" className="btn" onClick={() => navigate('/stocks')}>
+          Live Stock Market Data
+        </button>
+        <button type="button" className="btn" onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
     </div>
   );
 }

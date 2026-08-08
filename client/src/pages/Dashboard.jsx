@@ -36,6 +36,9 @@ function Dashboard() {
         </p>
       </div>
       <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button type="button" className="btn" onClick={() => navigate('/market-overview')}>
+          Market Overview Dashboard
+        </button>
         <button type="button" className="btn" onClick={() => navigate('/stocks')}>
           Live Stock Market Data
         </button>

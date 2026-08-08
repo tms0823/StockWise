@@ -1,0 +1,160 @@
+.search-container {
+  max-width: 900px;
+}
+
+.search-filter-bar {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.search-input-group input {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #dcdfe4;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.filter-grid select,
+.filter-grid input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #dcdfe4;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.filter-grid label,
+.search-input-group label {
+  font-size: 0.85rem;
+  color: #555;
+  font-weight: 600;
+}
+
+.btn-secondary {
+  background-color: #eef1f6;
+  color: #1a73e8;
+}
+
+.btn-secondary:hover {
+  background-color: #e2e6ee;
+}
+
+.clear-filters-btn {
+  margin-top: 1.25rem;
+}
+
+.results-count {
+  text-align: left;
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.company-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.company-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  text-align: left;
+}
+
+.company-card-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.company-card-header:hover {
+  background-color: #f8f9fb;
+}
+
+.company-card-title {
+  display: flex;
+  flex-direction: column;
+}
+
+.company-name {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: #222;
+}
+
+.company-symbol {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.company-card-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.company-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background-color: #eef1f6;
+  color: #444;
+}
+
+.badge-risk-low {
+  background-color: #e6f4ea;
+  color: #1e7e34;
+}
+
+.badge-risk-medium {
+  background-color: #fff4e5;
+  color: #b06a00;
+}
+
+.badge-risk-high {
+  background-color: #fdecea;
+  color: #c0392b;
+}
+
+.company-live-detail {
+  padding: 0 1.25rem 1.25rem;
+  border-top: 1px solid #f0f1f4;
+  padding-top: 1rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}

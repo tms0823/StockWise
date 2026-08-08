@@ -45,6 +45,9 @@ function Dashboard() {
         <button type="button" className="btn" onClick={() => navigate('/stocks/chart')}>
           Stock Chart & Comparison
         </button>
+        <button type="button" className="btn" onClick={() => navigate('/search')}>
+          Stock Search & Filter
+        </button>
         <button type="button" className="btn" onClick={handleLogout}>
           Logout
         </button>

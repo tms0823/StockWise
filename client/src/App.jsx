@@ -4,6 +4,7 @@ import TestConnection from './pages/TestConnection.jsx';
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Stock from './pages/Stock.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 function App() {
@@ -18,6 +19,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/stocks"
+        element={
+          <ProtectedRoute>
+            <Stock />
           </ProtectedRoute>
         }
       />

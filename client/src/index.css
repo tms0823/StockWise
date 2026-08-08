@@ -425,3 +425,108 @@ pre {
   font-size: 0.95rem;
   margin-bottom: 0;
 }
+
+/* ---------- Stock Chart & Comparison (Feature 2 & 3) ---------- */
+.time-view-selector {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.chart-wrapper {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.chart-tooltip {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chart-tooltip p {
+  margin-bottom: 0.15rem;
+  font-size: 0.9rem;
+}
+
+.chart-tooltip .chart-tooltip-date {
+  font-weight: 700;
+  color: #1a73e8;
+  margin-bottom: 0.4rem;
+}
+
+.comparison-section {
+  text-align: left;
+}
+
+.comparison-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.comparison-header h3 {
+  font-size: 1.25rem;
+  color: #333;
+  margin-bottom: 0;
+}
+
+.comparison-period {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.comparison-card {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-sub {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.comparison-direction {
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.comparison-direction.positive {
+  color: #2e7d32;
+  border-color: #2e7d32;
+}
+
+.comparison-direction.negative {
+  color: #c62828;
+  border-color: #c62828;
+}
+
+.comparison-direction.neutral {
+  color: #555;
+}

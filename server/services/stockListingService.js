@@ -1,7 +1,15 @@
 const StockListing = require('../models/StockListing');
+const { getStockBySymbol } = require('./stockService');
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
+
+const SORT_FIELDS = {
+  symbol: 'symbol',
+  companyName: 'companyName',
+  price: 'price',
+  dailyChangePercent: 'dailyChangePercent',
+};
 
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -33,6 +41,8 @@ const searchAndFilterListings = async (params = {}) => {
     riskLevel,
     page,
     limit,
+    sortBy,
+    sortOrder,
   } = params;
 
   const filter = {};
@@ -73,8 +83,15 @@ const searchAndFilterListings = async (params = {}) => {
   const limitNum = Math.min(toPositiveInt(limit, DEFAULT_LIMIT), MAX_LIMIT);
   const skip = (pageNum - 1) * limitNum;
 
+  const sortField = SORT_FIELDS[sortBy] || SORT_FIELDS.symbol;
+  const sortDirection = sortOrder === 'desc' ? -1 : 1;
+
   const [results, total] = await Promise.all([
-    StockListing.find(filter).sort({ symbol: 1 }).skip(skip).limit(limitNum).lean(),
+    StockListing.find(filter)
+      .sort({ [sortField]: sortDirection, symbol: 1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
     StockListing.countDocuments(filter),
   ]);
 
@@ -102,7 +119,44 @@ const getFilterOptions = async () => {
   };
 };
 
+/**
+ * Get a live quote for a single symbol when a user opens its detail view.
+ * Falls back to the last stored catalog price if the live provider is
+ * rate-limited, so search/filter browsing never depends on live quota.
+ */
+const getListingQuote = async (symbol) => {
+  const normalized = symbol.trim().toUpperCase();
+
+  try {
+    const live = await getStockBySymbol(normalized);
+    return { source: 'live', ...live };
+  } catch (error) {
+    if (error.code !== 'STOCK_PROVIDER_RATE_LIMIT') {
+      throw error;
+    }
+
+    const listing = await StockListing.findOne({ symbol: normalized }).lean();
+    if (!listing) {
+      throw error;
+    }
+
+    return {
+      source: 'catalog',
+      symbol: listing.symbol,
+      name: listing.companyName,
+      currentPrice: listing.price,
+      dailyChange: listing.dailyChange,
+      dailyChangePercent: listing.dailyChangePercent,
+      volume: null,
+      marketCap: null,
+      week52High: null,
+      week52Low: null,
+    };
+  }
+};
+
 module.exports = {
   searchAndFilterListings,
   getFilterOptions,
+  getListingQuote,
 };

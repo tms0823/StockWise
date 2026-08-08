@@ -9,3 +9,5 @@ export const searchCompanies = (params = {}) => {
 };
 
 export const getCompanyFilterOptions = () => api.get('/companies/filter-options');
+
+export const getCompanyQuote = (symbol) => api.get(`/companies/${encodeURIComponent(symbol)}/quote`);

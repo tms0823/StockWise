@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { searchCompanies, getCompanyFilterOptions } from '../services/companyService';
-import SearchFilterBar from '../components/SearchFilterBar';
-import CompanyResultsList from '../components/CompanyResultsList';
+import FilterSidebar from '../components/FilterSidebar';
+import CompanyResultsTable from '../components/CompanyResultsTable';
 import '../styles/stockSearch.css';
 
 const EMPTY_FILTERS = {
@@ -13,17 +13,19 @@ const EMPTY_FILTERS = {
   riskLevel: '',
 };
 
-const DEBOUNCE_MS = 400;
+const DEBOUNCE_MS = 350;
 const PAGE_LIMIT = 20;
 
 function StockSearch() {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [sort, setSort] = useState({ sortBy: 'symbol', sortOrder: 'asc' });
   const [page, setPage] = useState(1);
   const [filterOptions, setFilterOptions] = useState(null);
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -34,15 +36,17 @@ function StockSearch() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, filters]);
+  }, [query, filters, sort]);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    setIsTyping(true);
     setError(null);
 
     const timer = setTimeout(() => {
-      searchCompanies({ q: query, ...filters, page, limit: PAGE_LIMIT })
+      setIsTyping(false);
+      setLoading(true);
+      searchCompanies({ q: query, ...filters, ...sort, page, limit: PAGE_LIMIT })
         .then((res) => {
           if (cancelled) return;
           setResults(res.data.data.results);
@@ -73,75 +77,105 @@ function StockSearch() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query, filters, page]);
+  }, [query, filters, sort, page]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleClear = () => {
-    setQuery('');
     setFilters(EMPTY_FILTERS);
   };
 
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
+  const showSkeleton = loading && results.length === 0;
 
   return (
-    <div className="container search-container">
-      <h1>Stock Search & Filter</h1>
-      <h2>Module 1 — Feature 3</h2>
+    <div className="search-page">
+      <div className="screener-layout">
+        <FilterSidebar
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onClear={handleClear}
+          filterOptions={filterOptions}
+          activeCount={activeFilterCount}
+          sort={sort}
+          onSortChange={setSort}
+        />
 
-      <SearchFilterBar
-        query={query}
-        onQueryChange={setQuery}
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onClear={handleClear}
-        filterOptions={filterOptions}
-      />
-
-      {error && (
-        <div className="error-box">
-          <p className="error">{error.message}</p>
-        </div>
-      )}
-
-      {loading ? (
-        <p>Loading companies...</p>
-      ) : (
-        !error && (
-          <>
-            <p className="results-count">
-              {total} compan{total === 1 ? 'y' : 'ies'} found
-            </p>
-            <CompanyResultsList results={results} />
-
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </button>
-                <span>
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </button>
-              </div>
+        <div className="screener-main">
+          <div className="search-input-wrapper">
+            <svg className="search-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+              <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              id="company-search"
+              type="text"
+              placeholder="Search AAPL or Apple..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoComplete="off"
+              spellCheck="false"
+            />
+            {isTyping && <span className="search-spinner" aria-hidden="true" />}
+            {query && !isTyping && (
+              <button
+                type="button"
+                className="search-clear-btn"
+                aria-label="Clear search"
+                onClick={() => setQuery('')}
+              >
+                ×
+              </button>
             )}
-          </>
-        )
-      )}
+          </div>
+
+          {error && (
+            <div className="error-box">
+              <p className="error">{error.message}</p>
+            </div>
+          )}
+
+          {!error && (
+            <div className="catalog-card">
+              <div className="catalog-card-header">
+                <span className="catalog-label">Stock Catalog</span>
+                <span className="results-count">
+                  {loading ? 'Searching…' : `${total} compan${total === 1 ? 'y' : 'ies'} found`}
+                </span>
+              </div>
+
+              <CompanyResultsTable results={results} loading={showSkeleton} sort={sort} onSortChange={setSort} />
+
+              {!showSkeleton && totalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    ← Previous
+                  </button>
+                  <span className="pagination-label">
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

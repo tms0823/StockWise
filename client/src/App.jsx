@@ -5,6 +5,7 @@ import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Stock from './pages/Stock.jsx';
+import MarketOverview from './pages/MarketOverview.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 function App() {
@@ -27,6 +28,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Stock />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/market-overview"
+        element={
+          <ProtectedRoute>
+            <MarketOverview />
           </ProtectedRoute>
         }
       />

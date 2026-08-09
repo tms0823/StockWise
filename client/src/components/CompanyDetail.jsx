@@ -19,7 +19,20 @@ const TIMEFRAME_TO_RANGE = {
   '1Y': '1y',
   '5Y': '1y',
 };
+const formatRatioPercent = (value, signed = false) => {
+  if (value === null || value === undefined) return 'N/A';
 
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 'N/A';
+
+  const percent = numeric * 100;
+
+  if (signed && percent > 0) {
+    return `+${percent.toFixed(2)}%`;
+  }
+
+  return `${percent.toFixed(2)}%`;
+};
 export default function CompanyDetail() {
   const { symbol: urlSymbol } = useParams();
   const navigate = useNavigate();
@@ -370,22 +383,22 @@ export default function CompanyDetail() {
         >
           <IndicatorCard
             title="Price-to-Earnings (P/E)"
-            val={indicators?.peRatio != null ? `${indicators.peRatio}x` : 'N/A'}
+            val={indicators?.peRatio != null ? `${Number(indicators.peRatio).toFixed(2)}x` : 'N/A'}
             desc={indicators?.sectorAvgPE != null ? `Sector Avg: ${indicators.sectorAvgPE}x` : 'Unavailable'}
           />
           <IndicatorCard
             title="Earnings Per Share (EPS)"
-            val={indicators?.eps != null ? `$${indicators.eps}` : 'N/A'}
-            desc={indicators?.epsGrowthYoY != null ? `YoY Growth: +${indicators.epsGrowthYoY}%` : 'Unavailable'}
+            val={indicators?.eps != null ? `$${Number(indicators.eps).toFixed(2)}` : 'N/A'}
+            desc={indicators?.epsGrowthYoY != null ? `YoY Growth: ${formatRatioPercent(indicators.epsGrowthYoY, true)}` : 'Unavailable'}
           />
           <IndicatorCard
             title="Dividend Yield"
-            val={indicators?.dividendYield != null ? `${indicators.dividendYield}%` : 'N/A'}
+            val={formatRatioPercent(indicators?.dividendYield)}
             desc={indicators?.payoutRatio != null ? `Payout Ratio: ${indicators.payoutRatio}%` : 'Unavailable'}
           />
           <IndicatorCard
             title="Revenue Growth"
-            val={indicators?.revenueGrowth != null ? `+${indicators.revenueGrowth}%` : 'N/A'}
+            val={formatRatioPercent(indicators?.revenueGrowth, true)}
             desc="Year-over-Year Sales Growth"
           />
           <IndicatorCard
@@ -395,8 +408,8 @@ export default function CompanyDetail() {
           />
           <IndicatorCard
             title="Profit Margin"
-            val={indicators?.profitMargin != null ? `${indicators.profitMargin}%` : 'N/A'}
-            desc={indicators?.operatingMargin != null ? `Operating Margin: ${indicators.operatingMargin}%` : 'Unavailable'}
+            val={formatRatioPercent(indicators?.profitMargin)}
+            desc={indicators?.operatingMargin != null ? `Operating Margin: ${formatRatioPercent(indicators.operatingMargin)}` : 'Unavailable'}
           />
         </div>
       </div>

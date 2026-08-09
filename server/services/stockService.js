@@ -147,10 +147,27 @@ const fetchOverview = async (symbol) => {
   }
 
   return {
-    name: body.Name || null,
-    marketCap: toNumber(body.MarketCapitalization),
-    week52High: toNumber(body['52WeekHigh']),
-    week52Low: toNumber(body['52WeekLow']),
+  name: body.Name || null,
+  sector: body.Sector && body.Sector !== 'None' ? body.Sector : null,
+  industry: body.Industry && body.Industry !== 'None' ? body.Industry : null,
+  exchange: body.Exchange && body.Exchange !== 'None' ? body.Exchange : null,
+
+  marketCap: toNumber(body.MarketCapitalization),
+  week52High: toNumber(body['52WeekHigh']),
+  week52Low: toNumber(body['52WeekLow']),
+
+  peRatio: toNumber(body.PERatio),
+  eps: toNumber(body.EPS),
+  dividendYield: toNumber(body.DividendYield),
+  revenueGrowth: toNumber(body.QuarterlyRevenueGrowthYOY),
+  earningsGrowthYoY: toNumber(body.QuarterlyEarningsGrowthYOY),
+  profitMargin: toNumber(body.ProfitMargin),
+  operatingMargin: toNumber(body.OperatingMarginTTM),
+  beta: toNumber(body.Beta),
+
+  debtToEquity: Object.prototype.hasOwnProperty.call(body, 'DebtToEquityTTM')
+    ? toNumber(body.DebtToEquityTTM)
+    : null,
   };
 };
 
@@ -214,17 +231,34 @@ const getStockBySymbol = async (symbol) => {
   const history = await getDailyHistory(normalized);
 
   return {
-    symbol: normalized,
-    name: overview.name,
-    currentPrice: quote.currentPrice,
-    dailyChange: quote.dailyChange,
-    dailyChangePercent: quote.dailyChangePercent,
-    volume: quote.volume,
-    marketCap: overview.marketCap,
-    week52High: overview.week52High,
-    week52Low: overview.week52Low,
-    history,
-  };
+  symbol: normalized,
+  name: overview.name,
+  currentPrice: quote.currentPrice,
+  dailyChange: quote.dailyChange,
+  dailyChangePercent: quote.dailyChangePercent,
+  volume: quote.volume,
+  marketCap: overview.marketCap,
+  week52High: overview.week52High,
+  week52Low: overview.week52Low,
+
+  sector: overview.sector,
+  industry: overview.industry,
+  exchange: overview.exchange,
+
+  indicators: {
+    peRatio: overview.peRatio,
+    eps: overview.eps,
+    dividendYield: overview.dividendYield,
+    revenueGrowth: overview.revenueGrowth,
+    epsGrowthYoY: overview.earningsGrowthYoY,
+    debtToEquity: overview.debtToEquity,
+    profitMargin: overview.profitMargin,
+    operatingMargin: overview.operatingMargin,
+    beta: overview.beta,
+  },
+
+  history,
+};
 };
 
 const HISTORY_RANGES = {

@@ -6,6 +6,12 @@ dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
+router.get('/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  });
+router.get('/:symbol/chart', async (req, res) => {
+});
+
 const startServer = async () => {
   try {
     await connectDB();

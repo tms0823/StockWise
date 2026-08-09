@@ -5,6 +5,7 @@ import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import CompanyDetail from './copy_paste_bundle/CompanyDetail';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/company/:symbol" element={<CompanyDetail />} />
     </Routes>
   );
 }

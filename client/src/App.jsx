@@ -9,7 +9,7 @@ import MarketOverview from './pages/MarketOverview.jsx';
 import StockChart from './pages/StockChart.jsx';
 import StockSearch from './pages/StockSearch.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import CompanyDetail from './copy_paste_bundle/CompanyDetail';
+import CompanyDetail from './components/CompanyDetail.jsx';
 
 function App() {
   return (
@@ -58,8 +58,16 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/company/:symbol"
+        element={
+          <ProtectedRoute>
+            <CompanyDetail />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
-    <Route path="/company/:symbol" element={<CompanyDetail />} />
   );
 }
 

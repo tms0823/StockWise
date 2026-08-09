@@ -1,31 +1,23 @@
-// In-memory TTL cache: { [cacheKey]: { data, expiresAt } }
-const cache = new Map();
+// MarketService: composes Alpha Vantage market data using the shared
+// per-function cache (single-flight + global pacer + stale-on-429 fallback).
+//
+// KEY BEHAVIOR:
+// - TOP_GAINERS_LOSERS and each index GLOBAL_QUOTE are cached independently
+//   and shared with the rest of the app via alphaVantageCache.js.
+// - A cache miss issues at most ONE Alpha Vantage call for that key, paced
+//   through the shared scheduler. On rate-limit, fetchWithCache serves stale
+//   cache within the bounded stale age, otherwise the 429 propagates.
+// - The /api/market/overview response shape is preserved exactly (no
+//   injected source/cache metadata fields).
+
+const { fetchWithCache } = require('./alphaVantageCache');
 
 const getApiKey = () => process.env.STOCK_API_KEY;
 const getApiBaseUrl = () => process.env.STOCK_API_BASE_URL || 'https://www.alphavantage.co/query';
-const getCacheTtlMs = () => Number(process.env.STOCK_CACHE_TTL_MS) || 300000;
-
-const isCacheValid = (entry) => entry && entry.expiresAt > Date.now();
-
-const getCached = (key) => {
-  const entry = cache.get(key);
-  if (isCacheValid(entry)) {
-    return entry.data;
-  }
-  cache.delete(key);
-  return null;
-};
-
-const setCache = (key, data) => {
-  cache.set(key, {
-    data,
-    expiresAt: Date.now() + getCacheTtlMs(),
-  });
-};
 
 /**
  * Fetch from Alpha Vantage and inspect both HTTP status and response body.
- * Reuses the same error-handling patterns as stockService.
+ * Alpha Vantage sometimes returns errors inside an HTTP 200 JSON response.
  */
 const fetchAlphaVantage = async (params) => {
   const apiKey = getApiKey();
@@ -103,28 +95,6 @@ const fetchAlphaVantage = async (params) => {
   return body;
 };
 
-// Alpha Vantage free tier allows ~1 request per second and a small
-// per-minute burst. Retry rate-limited provider responses with backoff,
-// consistent with the existing stock service pattern.
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const withRateLimitRetry = async (fn, retries = 3) => {
-  let lastError;
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (error.code !== 'STOCK_PROVIDER_RATE_LIMIT') {
-        throw error;
-      }
-      // Backoff: 2s, 4s, 8s
-      await sleep(2000 * 2 ** attempt);
-    }
-  }
-  throw lastError;
-};
-
 const toNumber = (value) => {
   if (value === undefined || value === null || value === 'None' || value === '') {
     return null;
@@ -179,9 +149,6 @@ const fetchTopGainersLosers = async () => {
 
 /**
  * Major market-wide indicators to track for market movement.
- * Alpha Vantage's GLOBAL_QUOTE does not support caret-prefixed index
- * symbols (e.g. ^GSPC), so we use the ETF equivalents that track the
- * major indices: SPY (S&P 500), DIA (Dow Jones), QQQ (NASDAQ-100).
  */
 const MAJOR_INDICES = [
   { symbol: 'SPY', name: 'S&P 500 (SPY)' },
@@ -211,60 +178,41 @@ const fetchIndexQuote = async (symbol) => {
   };
 };
 
-/**
- * Fetch major market indices for market movement overview.
- * Fetches indices sequentially to respect Alpha Vantage rate limits.
- */
-const fetchMajorMarketIndices = async () => {
-  const results = [];
-  for (const index of MAJOR_INDICES) {
-    try {
-      const quote = await fetchIndexQuote(index.symbol);
-      if (quote) {
-        results.push({
-          ...quote,
-          name: index.name,
-        });
-      }
-    } catch {
-      // If one index fails, continue to the next
-    }
-    // Rate-limit spacing: 1 second between calls
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  return results;
-};
+// Cache-wrapped provider fetchers — all paced through the shared scheduler
+// so different keys never fire Alpha Vantage requests simultaneously.
+const getGainersLosers = async () =>
+  fetchWithCache('gainers_losers', () => fetchTopGainersLosers());
+
+const getIndexQuote = async (symbol) =>
+  fetchWithCache(`index_quote:${symbol}`, () => fetchIndexQuote(symbol));
 
 /**
  * Get the full market overview.
- * Cached as a single entry to avoid repeated provider requests.
+ * Composed from shared cached provider fetches; stale-on-429 fallback
+ * handled inside fetchWithCache. Response shape preserved exactly.
+ * Provider errors (including STOCK_PROVIDER_RATE_LIMIT) propagate when no
+ * usable cache exists — no silent skipping, no fabricated index data.
  */
 const getMarketOverview = async () => {
-  const cached = getCached('market_overview');
-  if (cached) {
-    return cached;
+  const { topGainers, topLosers, mostActive } = await getGainersLosers();
+
+  const majorMarketMovement = [];
+  for (const index of MAJOR_INDICES) {
+    const quote = await getIndexQuote(index.symbol);
+    if (quote) {
+      majorMarketMovement.push({
+        ...quote,
+        name: index.name,
+      });
+    }
   }
 
-  // Fetch gainers/losers/active and major indices in sequence.
-  // Rate-limit retries keep the free-tier plan usable during bursts.
-  const { topGainers, topLosers, mostActive } = await withRateLimitRetry(
-    () => fetchTopGainersLosers(),
-    2
-  );
-
-  // Wait before fetching indices (rate-limit spacing)
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  const majorMarketMovement = await fetchMajorMarketIndices();
-
-  const overview = {
+  return {
     topGainers,
     topLosers,
     mostActive,
     majorMarketMovement,
   };
-
-  setCache('market_overview', overview);
-  return overview;
 };
 
 module.exports = {

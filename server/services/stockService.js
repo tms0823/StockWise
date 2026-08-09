@@ -1,29 +1,24 @@
-// In-memory TTL cache: { [normalizedSymbol]: { data, expiresAt } }
-const cache = new Map();
+// StockService: composes Alpha Vantage provider data using the shared
+// per-function cache (single-flight + global pacer + stale-on-429 fallback).
+//
+// KEY BEHAVIOR:
+// - GET /api/stocks/:symbol  -> GLOBAL_QUOTE + OVERVIEW + TIME_SERIES_DAILY,
+//   each cached independently and shared across /stocks, /company, /chart.
+// - GET /api/stocks/:symbol/history -> fetches ONLY TIME_SERIES_DAILY
+//   (never re-runs the full getStockBySymbol path).
+// - A cache miss issues at most ONE Alpha Vantage call for that key, paced
+//   through the shared scheduler. On rate-limit, fetchWithCache serves stale
+//   cache within the bounded stale age, otherwise the 429 propagates.
+// - No fabricated values. Catalog fallback is intentionally NOT used here
+//   (this endpoint has no source marker); it remains only in the existing
+//   /api/companies/:symbol/quote behavior.
+
+const { fetchWithCache } = require('./alphaVantageCache');
 
 const getApiKey = () => process.env.STOCK_API_KEY;
 const getApiBaseUrl = () => process.env.STOCK_API_BASE_URL || 'https://www.alphavantage.co/query';
-const getCacheTtlMs = () => Number(process.env.STOCK_CACHE_TTL_MS) || 300000;
 
 const normalizeSymbol = (symbol) => symbol.trim().toUpperCase();
-
-const isCacheValid = (entry) => entry && entry.expiresAt > Date.now();
-
-const getCached = (key) => {
-  const entry = cache.get(key);
-  if (isCacheValid(entry)) {
-    return entry.data;
-  }
-  cache.delete(key);
-  return null;
-};
-
-const setCache = (key, data) => {
-  cache.set(key, {
-    data,
-    expiresAt: Date.now() + getCacheTtlMs(),
-  });
-};
 
 /**
  * Fetch from Alpha Vantage and inspect both HTTP status and response body.
@@ -67,9 +62,6 @@ const fetchAlphaVantage = async (params) => {
   }
 
   // Alpha Vantage rate-limit / quota response.
-  // Only match actual rate-limit phrases — "premium" alone appears in
-  // non-rate-limit messages (e.g. premium-only features) and must not
-  // be treated as a rate limit.
   const isRateLimitMessage = (text) =>
     typeof text === 'string' &&
     (/per second/i.test(text) ||
@@ -155,10 +147,27 @@ const fetchOverview = async (symbol) => {
   }
 
   return {
-    name: body.Name || null,
-    marketCap: toNumber(body.MarketCapitalization),
-    week52High: toNumber(body['52WeekHigh']),
-    week52Low: toNumber(body['52WeekLow']),
+  name: body.Name || null,
+  sector: body.Sector && body.Sector !== 'None' ? body.Sector : null,
+  industry: body.Industry && body.Industry !== 'None' ? body.Industry : null,
+  exchange: body.Exchange && body.Exchange !== 'None' ? body.Exchange : null,
+
+  marketCap: toNumber(body.MarketCapitalization),
+  week52High: toNumber(body['52WeekHigh']),
+  week52Low: toNumber(body['52WeekLow']),
+
+  peRatio: toNumber(body.PERatio),
+  eps: toNumber(body.EPS),
+  dividendYield: toNumber(body.DividendYield),
+  revenueGrowth: toNumber(body.QuarterlyRevenueGrowthYOY),
+  earningsGrowthYoY: toNumber(body.QuarterlyEarningsGrowthYOY),
+  profitMargin: toNumber(body.ProfitMargin),
+  operatingMargin: toNumber(body.OperatingMarginTTM),
+  beta: toNumber(body.Beta),
+
+  debtToEquity: Object.prototype.hasOwnProperty.call(body, 'DebtToEquityTTM')
+    ? toNumber(body.DebtToEquityTTM)
+    : null,
   };
 };
 
@@ -193,60 +202,63 @@ const fetchDailyHistory = async (symbol) => {
   });
 };
 
-// Alpha Vantage free tier allows ~1 request per second and a small
-// per-minute burst. Space out sequential provider calls and retry
-// rate-limited responses with backoff.
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Cache-wrapped provider fetchers. Each cache miss issues at most one
+// Alpha Vantage call for that key via the shared paced scheduler;
+// fetchWithCache handles single-flight dedup and stale-on-429 fallback.
+const getQuote = async (symbol) => {
+  const normalized = normalizeSymbol(symbol);
+  return fetchWithCache(`quote:${normalized}`, () => fetchGlobalQuote(normalized));
+};
 
-const withRateLimitRetry = async (fn, retries = 3) => {
-  let lastError;
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (error.code !== 'STOCK_PROVIDER_RATE_LIMIT') {
-        throw error;
-      }
-      // Backoff: 2s, 4s, 8s
-      await sleep(2000 * 2 ** attempt);
-    }
-  }
-  throw lastError;
+const getOverview = async (symbol) => {
+  const normalized = normalizeSymbol(symbol);
+  return fetchWithCache(`overview:${normalized}`, () => fetchOverview(normalized));
+};
+
+const getDailyHistory = async (symbol) => {
+  const normalized = normalizeSymbol(symbol);
+  return fetchWithCache(`daily_history:${normalized}`, () => fetchDailyHistory(normalized));
 };
 
 const getStockBySymbol = async (symbol) => {
   const normalized = normalizeSymbol(symbol);
 
-  const cached = getCached(normalized);
-  if (cached) {
-    return cached;
-  }
+  // Compose from the shared per-function caches. On rate-limit with no
+  // usable (fresh/stale) cache, the STOCK_PROVIDER_RATE_LIMIT error
+  // propagates — no fabricated values, no catalog substitution here.
+  const quote = await getQuote(normalized);
+  const overview = await getOverview(normalized);
+  const history = await getDailyHistory(normalized);
 
-  // Fetch the three provider endpoints sequentially.
-  // Alpha Vantage free tier allows ~1 request per second; parallel
-  // requests trigger rate limiting (an "Information" response).
-  const quote = await withRateLimitRetry(() => fetchGlobalQuote(normalized));
-  await sleep(2000);
-  const overview = await withRateLimitRetry(() => fetchOverview(normalized));
-  await sleep(2000);
-  const history = await withRateLimitRetry(() => fetchDailyHistory(normalized));
+  return {
+  symbol: normalized,
+  name: overview.name,
+  currentPrice: quote.currentPrice,
+  dailyChange: quote.dailyChange,
+  dailyChangePercent: quote.dailyChangePercent,
+  volume: quote.volume,
+  marketCap: overview.marketCap,
+  week52High: overview.week52High,
+  week52Low: overview.week52Low,
 
-  const stock = {
-    symbol: normalized,
-    name: overview.name,
-    currentPrice: quote.currentPrice,
-    dailyChange: quote.dailyChange,
-    dailyChangePercent: quote.dailyChangePercent,
-    volume: quote.volume,
-    marketCap: overview.marketCap,
-    week52High: overview.week52High,
-    week52Low: overview.week52Low,
-    history,
-  };
+  sector: overview.sector,
+  industry: overview.industry,
+  exchange: overview.exchange,
 
-  setCache(normalized, stock);
-  return stock;
+  indicators: {
+    peRatio: overview.peRatio,
+    eps: overview.eps,
+    dividendYield: overview.dividendYield,
+    revenueGrowth: overview.revenueGrowth,
+    epsGrowthYoY: overview.earningsGrowthYoY,
+    debtToEquity: overview.debtToEquity,
+    profitMargin: overview.profitMargin,
+    operatingMargin: overview.operatingMargin,
+    beta: overview.beta,
+  },
+
+  history,
+};
 };
 
 const HISTORY_RANGES = {
@@ -257,6 +269,11 @@ const HISTORY_RANGES = {
   '1y': 252,
 };
 
+/**
+ * Returns history for a symbol/range. This fetches ONLY the daily
+ * time-series via the shared cache — it does NOT re-run the full
+ * getStockBySymbol path (no GLOBAL_QUOTE / OVERVIEW calls).
+ */
 const getStockHistory = async (symbol, range) => {
   const normalized = normalizeSymbol(symbol);
 
@@ -267,16 +284,16 @@ const getStockHistory = async (symbol, range) => {
     throw error;
   }
 
-  const stock = await getStockBySymbol(normalized);
+  const history = await getDailyHistory(normalized);
 
   // Return the most recent N trading days
   const limit = HISTORY_RANGES[range];
-  const history = stock.history.slice(-limit);
+  const sliced = history.slice(-limit);
 
   return {
     symbol: normalized,
     range,
-    history,
+    history: sliced,
   };
 };
 

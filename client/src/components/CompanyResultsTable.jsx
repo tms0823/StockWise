@@ -1,4 +1,5 @@
 import { useState, Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getCompanyQuote } from '../services/companyService';
 
 const REPUTATION_ICONS = {
@@ -89,6 +90,7 @@ function SkeletonRow() {
 }
 
 function CompanyResultsTable({ results, loading, sort, onSortChange }) {
+  const navigate = useNavigate();
   const [expandedSymbol, setExpandedSymbol] = useState(null);
   const [liveQuotes, setLiveQuotes] = useState({});
   const [liveLoadingSymbol, setLiveLoadingSymbol] = useState(null);
@@ -250,6 +252,16 @@ function CompanyResultsTable({ results, loading, sort, onSortChange }) {
                               </div>
                             </>
                           )}
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/company/${encodeURIComponent(company.symbol)}`);
+                            }}
+                          >
+                            View Company Profile
+                          </button>
                         </div>
                       </td>
                     </tr>

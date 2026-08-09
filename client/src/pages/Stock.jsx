@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const HISTORY_RANGES = ['1d', '1w', '1m', '3m', '1y'];
@@ -27,6 +28,7 @@ function formatMarketCap(value) {
 }
 
 function StockPage() {
+  const navigate = useNavigate();
   const [symbol, setSymbol] = useState('');
   const [range, setRange] = useState('1m');
   const [stock, setStock] = useState(null);
@@ -195,6 +197,15 @@ function StockPage() {
                 <span className="stat-label">52-Week Low</span>
                 <span className="stat-value">${formatNumber(stock.week52Low)}</span>
               </div>
+            </div>
+            <div style={{ marginTop: '16px' }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => navigate(`/company/${encodeURIComponent(stock.symbol)}`)}
+              >
+                View Company Profile
+              </button>
             </div>
           </div>
 

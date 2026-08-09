@@ -59,7 +59,14 @@ function App() {
         }
       />
 
-      <Route path="/company/:symbol" element={<CompanyDetail />} />
+      <Route
+        path="/company/:symbol"
+        element={
+          <ProtectedRoute>
+            <CompanyDetail />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

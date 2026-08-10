@@ -300,4 +300,5 @@ const getStockHistory = async (symbol, range) => {
 module.exports = {
   getStockBySymbol,
   getStockHistory,
+  getQuote,
 };

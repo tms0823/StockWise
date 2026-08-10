@@ -35,6 +35,26 @@ const userSchema = new mongoose.Schema(
       default: 100000,
       min: 0,
     },
+    holdings: [
+      {
+        symbol: {
+          type: String,
+          required: true,
+          uppercase: true,
+          trim: true,
+        },
+        quantity: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        averageBuyPrice: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

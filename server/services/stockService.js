@@ -530,4 +530,5 @@ module.exports = {
   getStockHistory,
   getDividends,
   normalizeDividendHistory,
+  getQuote,
 };

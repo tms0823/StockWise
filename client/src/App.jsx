@@ -8,6 +8,7 @@ import Stock from './pages/Stock.jsx';
 import MarketOverview from './pages/MarketOverview.jsx';
 import StockChart from './pages/StockChart.jsx';
 import StockSearch from './pages/StockSearch.jsx';
+import DummyInvestmentPage from './pages/DummyInvestmentPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import CompanyDetail from './components/CompanyDetail.jsx';
 
@@ -55,6 +56,15 @@ function App() {
         element={
           <ProtectedRoute>
             <StockSearch />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/dummy-investment"
+        element={
+          <ProtectedRoute>
+            <DummyInvestmentPage />
           </ProtectedRoute>
         }
       />

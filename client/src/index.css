@@ -530,3 +530,107 @@ pre {
 .comparison-direction.neutral {
   color: #555;
 }
+
+/* ---------- Dummy Investment (Module 2 Member 3) ---------- */
+.dummy-investment-container {
+  max-width: 850px;
+}
+
+.simulation-notice {
+  background-color: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  color: #8d6e63;
+  margin-bottom: 1.5rem;
+}
+
+.balance-value {
+  font-size: 1.8rem;
+  color: #1a73e8;
+}
+
+.estimate-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.trade-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.trade-actions .btn {
+  flex: 1;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-sell {
+  background-color: #c62828;
+}
+
+.btn-sell:hover {
+  background-color: #b71c1c;
+}
+
+.trade-msg {
+  margin-top: 1rem;
+}
+
+.trade-msg p {
+  margin-bottom: 0;
+}
+
+.holdings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.holding-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.holding-row:hover {
+  background-color: #e8f0fe;
+  border-color: #1a73e8;
+}
+
+.holding-row:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.holding-symbol {
+  font-weight: 700;
+  color: #1a73e8;
+  font-size: 1.05rem;
+}
+
+.holding-detail {
+  color: #555;
+}

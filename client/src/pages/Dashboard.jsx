@@ -51,6 +51,9 @@ function Dashboard() {
         <button type="button" className="btn" onClick={() => navigate('/dummy-investment')}>
           Dummy Investment
         </button>
+        <button type="button" className="btn" onClick={() => navigate('/portfolio')}>
+          My Portfolio
+        </button>
         <button type="button" className="btn" onClick={() => navigate('/company/AAPL')}>
           Company Profile & Financial Indicators
         </button>

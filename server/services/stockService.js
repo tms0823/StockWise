@@ -168,6 +168,12 @@ const fetchOverview = async (symbol) => {
   debtToEquity: Object.prototype.hasOwnProperty.call(body, 'DebtToEquityTTM')
     ? toNumber(body.DebtToEquityTTM)
     : null,
+
+  analystRatingStrongBuy: toNumber(body.AnalystRatingStrongBuy),
+  analystRatingBuy: toNumber(body.AnalystRatingBuy),
+  analystRatingHold: toNumber(body.AnalystRatingHold),
+  analystRatingSell: toNumber(body.AnalystRatingSell),
+  analystRatingStrongSell: toNumber(body.AnalystRatingStrongSell),
   };
 };
 
@@ -202,6 +208,203 @@ const fetchDailyHistory = async (symbol) => {
   });
 };
 
+/**
+ * Fetch raw dividend history from the Alpha Vantage DIVIDENDS endpoint.
+ * Reuses the existing fetchAlphaVantage (same key/base URL/error handling).
+ */
+const fetchDividends = async (symbol) => {
+  return fetchAlphaVantage({
+    function: 'DIVIDENDS',
+    symbol,
+  });
+};
+
+const isCompleteDate = (value) => {
+  if (typeof value !== 'string') return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  // Reject impossible calendar dates (e.g. 2023-02-30) rather than guessing.
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
+};
+
+/**
+ * Parse a dividend per-share amount.
+ *
+ * The verified Alpha Vantage `amount` field is a numeric string. We also
+ * accept an already-numeric finite value. No broad Number(value) coercion
+ * on arbitrary types: booleans, arrays, objects and other types => null.
+ */
+const parseAmount = (value) => {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const num = Number(trimmed);
+    return Number.isFinite(num) && num >= 0 ? num : null;
+  }
+
+  return null;
+};
+
+/**
+ * Normalize a raw Alpha Vantage DIVIDENDS response into the pure dividend
+ * scoring contract.
+ *
+ * Verified real response shape:
+ *   { symbol: string, data: Array<{
+ *       ex_dividend_date: string,   // YYYY-MM-DD
+ *       declaration_date: string,
+ *       record_date: string,
+ *       payment_date: string,
+ *       amount: string              // per-share amount
+ *     }> }
+ *
+ * Only ex_dividend_date and amount are used for scoring.
+ *
+ * Contract:
+ *   {
+ *     state: 'ok' | 'unavailable',
+ *     completeYears: [YYYY, YYYY, YYYY],
+ *     yearlyTotals: { YYYY: number, YYYY: number, YYYY: number },
+ *     reason?: string
+ *   }
+ *
+ * Uses the previous THREE COMPLETE calendar years based on `now`.
+ * Example in 2026: [2023, 2024, 2025]. Current-year rows are ignored.
+ */
+const normalizeDividendHistory = (rawBody, now = new Date()) => {
+  const nowDate = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(nowDate.getTime())) {
+    throw new Error('normalizeDividendHistory: invalid "now" argument');
+  }
+  const currentYear = nowDate.getUTCFullYear();
+
+  const completeYears = [
+    currentYear - 3,
+    currentYear - 2,
+    currentYear - 1,
+  ];
+
+  const emptyTotals = {
+    [completeYears[0]]: 0,
+    [completeYears[1]]: 0,
+    [completeYears[2]]: 0,
+  };
+
+  // Provider validation.
+  if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
+    return {
+      state: 'unavailable',
+      completeYears,
+      yearlyTotals: emptyTotals,
+      reason: 'Malformed dividend history data',
+    };
+  }
+
+  const data = rawBody.data;
+  if (!Array.isArray(data)) {
+    return {
+      state: 'unavailable',
+      completeYears,
+      yearlyTotals: emptyTotals,
+      reason: 'Malformed dividend history data',
+    };
+  }
+
+  if (data.length === 0) {
+    return {
+      state: 'unavailable',
+      completeYears,
+      yearlyTotals: emptyTotals,
+      reason: 'Dividend history coverage cannot be confirmed',
+    };
+  }
+
+  // Validate EVERY record first. If any record is malformed, the whole
+  // history is unavailable — no early break, no unvalidated rows used.
+  const validRecords = [];
+  for (const record of data) {
+    const date = record && record.ex_dividend_date;
+    const amount = record && record.amount;
+
+    if (!isCompleteDate(date) || parseAmount(amount) === null) {
+      return {
+        state: 'unavailable',
+        completeYears,
+        yearlyTotals: emptyTotals,
+        reason: 'Malformed dividend history data',
+      };
+    }
+
+    validRecords.push({
+      exDate: new Date(`${date}T00:00:00Z`),
+      amount: parseAmount(amount),
+    });
+  }
+
+  // Coverage rule: require at least one valid record before the oldest
+  // complete year, so a zero year inside the window is a genuine
+  // no-payment year rather than a coverage gap.
+  const oldestYearStart = Date.UTC(completeYears[0], 0, 1);
+  const hasCoverage = validRecords.some((r) => r.exDate.getTime() < oldestYearStart);
+
+  if (!hasCoverage) {
+    return {
+      state: 'unavailable',
+      completeYears,
+      yearlyTotals: emptyTotals,
+      reason: 'Insufficient dividend history coverage',
+    };
+  }
+
+  // Coverage confirmed: initialize all three yearly totals to 0. A missing
+  // year inside confirmed coverage is a genuine 0-payment year.
+  const yearlyTotals = {
+    [completeYears[0]]: 0,
+    [completeYears[1]]: 0,
+    [completeYears[2]]: 0,
+  };
+
+  for (const record of validRecords) {
+    const year = record.exDate.getUTCFullYear();
+    if (Object.prototype.hasOwnProperty.call(yearlyTotals, String(year))) {
+      yearlyTotals[year] += record.amount;
+    }
+  }
+
+  // Round each total to 6 decimals to clear floating-point noise; do not
+  // discard legitimate precision.
+  for (const year of completeYears) {
+    yearlyTotals[year] = Math.round(yearlyTotals[year] * 1e6) / 1e6;
+  }
+
+  return {
+    state: 'ok',
+    completeYears,
+    yearlyTotals,
+  };
+};
+
+// Dividend history changes slowly (~24h fresh TTL; bounded stale fallback
+// is 2 * 24h = 48h through the shared cache).
+const DIVIDEND_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 // Cache-wrapped provider fetchers. Each cache miss issues at most one
 // Alpha Vantage call for that key via the shared paced scheduler;
 // fetchWithCache handles single-flight dedup and stale-on-429 fallback.
@@ -218,6 +421,26 @@ const getOverview = async (symbol) => {
 const getDailyHistory = async (symbol) => {
   const normalized = normalizeSymbol(symbol);
   return fetchWithCache(`daily_history:${normalized}`, () => fetchDailyHistory(normalized));
+};
+
+/**
+ * Cache-wrapped dividend history fetch.
+ *
+ * - Caches the RAW provider response, then normalizes it afterward.
+ * - Cache key: dividends:<NORMALIZED_SYMBOL>.
+ * - Uses the 24-hour TTL override; the existing quote/overview/history
+ *   wrappers are untouched and keep the default TTL.
+ */
+const getDividends = async (symbol) => {
+  const normalized = normalizeSymbol(symbol);
+
+  const rawBody = await fetchWithCache(
+    `dividends:${normalized}`,
+    () => fetchDividends(normalized),
+    { ttlMs: DIVIDEND_CACHE_TTL_MS }
+  );
+
+  return normalizeDividendHistory(rawBody);
 };
 
 const getStockBySymbol = async (symbol) => {
@@ -255,6 +478,11 @@ const getStockBySymbol = async (symbol) => {
     profitMargin: overview.profitMargin,
     operatingMargin: overview.operatingMargin,
     beta: overview.beta,
+    analystRatingStrongBuy: overview.analystRatingStrongBuy,
+    analystRatingBuy: overview.analystRatingBuy,
+    analystRatingHold: overview.analystRatingHold,
+    analystRatingSell: overview.analystRatingSell,
+    analystRatingStrongSell: overview.analystRatingStrongSell,
   },
 
   history,
@@ -300,5 +528,7 @@ const getStockHistory = async (symbol, range) => {
 module.exports = {
   getStockBySymbol,
   getStockHistory,
+  getDividends,
+  normalizeDividendHistory,
   getQuote,
 };

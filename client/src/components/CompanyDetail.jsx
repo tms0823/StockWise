@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import ReputationScoreCard from './ReputationScoreCard';
 
 // Map the CompanyDetail timeframe buttons to the backend history ranges.
 // The backend supports 1d, 1w, 1m, 3m, 1y — 5Y falls back to 1y.
@@ -41,6 +42,9 @@ export default function CompanyDetail() {
   const [stock, setStock] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reputation, setReputation] = useState(null);
+  const [reputationLoading, setReputationLoading] = useState(false);
+  const [reputationError, setReputationError] = useState(null);
   const [timeframe, setTimeframe] = useState('1M');
   const [chartData, setChartData] = useState([]);
   const [watchlist, setWatchlist] = useState(['AAPL', 'NVDA']);
@@ -113,6 +117,39 @@ export default function CompanyDetail() {
     };
   }, [symbol, timeframe]);
 
+  // Independent reputation fetch — a failure here must NOT affect the rest
+  // of the Company Profile (header, price, indicators, chart/history).
+  useEffect(() => {
+    let cancelled = false;
+
+    setReputation(null);
+    setReputationError(null);
+    setReputationLoading(true);
+
+    const loadReputation = async () => {
+      try {
+        const res = await api.get(`/stocks/${encodeURIComponent(symbol)}/reputation`);
+        if (!cancelled) {
+          setReputation(res.data.data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setReputationError(err);
+        }
+      } finally {
+        if (!cancelled) {
+          setReputationLoading(false);
+        }
+      }
+    };
+
+    loadReputation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol]);
+
   const toggleWatchlist = () => {
     // No backend watchlist route exists — keep it local-only.
     setWatchlist((prev) =>
@@ -163,7 +200,6 @@ export default function CompanyDetail() {
   const sector = stock.sector || 'N/A';
   const industry = stock.industry || 'N/A';
   const exchange = stock.exchange || 'N/A';
-  const reputation = stock.reputation || null;
   const indicators = stock.indicators || null;
   const news = Array.isArray(stock.news) ? stock.news : [];
 
@@ -319,49 +355,12 @@ export default function CompanyDetail() {
         </div>
       </div>
 
-      {/* 3. Company Reputation Score & Risk Level */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '20px',
-          marginBottom: '24px',
-        }}
-      >
-        <div
-          style={{
-            background: 'rgba(18, 26, 43, 0.8)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            padding: '24px',
-            borderRadius: '16px',
-          }}
-        >
-          <h3>Company Reputation Score</h3>
-          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#10b981', margin: '12px 0' }}>
-            {reputation?.score ?? 'N/A'}
-          </div>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
-            Multi-factor decision score based on financials, stability, and news sentiment.
-          </p>
-        </div>
-
-        <div
-          style={{
-            background: 'rgba(18, 26, 43, 0.8)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            padding: '24px',
-            borderRadius: '16px',
-          }}
-        >
-          <h3>Investment Risk Level</h3>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#f59e0b', margin: '12px 0' }}>
-            {reputation?.riskLevel ?? 'N/A'}
-          </div>
-          <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
-            Beta Rating: {indicators?.beta ?? 'N/A'}
-          </p>
-        </div>
-      </div>
+      {/* 3. Company Reputation Score & Breakdown */}
+      <ReputationScoreCard
+        reputation={reputation}
+        loading={reputationLoading}
+        error={reputationError}
+      />
 
       {/* 4. Financial Indicator Display Grid */}
       <div

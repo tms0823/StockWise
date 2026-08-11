@@ -29,23 +29,24 @@ const getMinIntervalMs = () => Number(process.env.STOCK_API_MIN_INTERVAL_MS) || 
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const isFresh = (entry) => entry && Date.now() - entry.fetchedAt < getTtlMs();
-const isWithinStaleBound = (entry) => entry && Date.now() - entry.fetchedAt < getStaleMaxAgeMs();
+const isFresh = (entry, ttlMs) => entry && Date.now() - entry.fetchedAt < ttlMs;
+const isWithinStaleBound = (entry, staleMaxAgeMs) =>
+  entry && Date.now() - entry.fetchedAt < staleMaxAgeMs;
 
-const getFreshEntry = (key) => {
+const getFreshEntry = (key, ttlMs) => {
   const entry = cache.get(key);
-  if (entry && isFresh(entry)) {
+  if (entry && isFresh(entry, ttlMs)) {
     return entry;
   }
   return null;
 };
 
-const getStaleEntry = (key) => {
+const getStaleEntry = (key, staleMaxAgeMs) => {
   const entry = cache.get(key);
   if (!entry) {
     return null;
   }
-  if (isWithinStaleBound(entry)) {
+  if (isWithinStaleBound(entry, staleMaxAgeMs)) {
     return entry;
   }
   // Too old — evict so stale data is never served indefinitely.
@@ -95,6 +96,25 @@ const scheduleProviderCall = (fn) => {
 };
 
 /**
+ * Resolve the effective TTL for a call.
+ * - If options.ttlMs is supplied, it must be a positive finite number;
+ *   malformed/zero values throw rather than silently falling back.
+ * - Otherwise the existing global STOCK_CACHE_TTL_MS default is used.
+ * @param {{ ttlMs?: number }} [options]
+ * @returns {number} effective TTL in ms
+ */
+const resolveTtlMs = (options) => {
+  if (options && options.ttlMs !== undefined) {
+    const ttl = options.ttlMs;
+    if (typeof ttl !== 'number' || !Number.isFinite(ttl) || ttl <= 0) {
+      throw new Error('fetchWithCache ttlMs must be a positive finite number');
+    }
+    return ttl;
+  }
+  return getTtlMs();
+};
+
+/**
  * Fetch a provider resource with:
  * 1. fresh-cache hit  -> return cached data immediately (no queue, no call)
  * 2. in-flight dedup  -> await the existing single-flight Promise
@@ -102,9 +122,17 @@ const scheduleProviderCall = (fn) => {
  *                        global pacer; cache on success; on rate-limit,
  *                        serve stale data within the bounded age, else
  *                        propagate the 429. No retries.
+ *
+ * Optional per-call TTL override (backward compatible):
+ *   fetchWithCache(key, fetcher)                    -> default TTL
+ *   fetchWithCache(key, fetcher, { ttlMs })         -> custom TTL
+ * The stale bound is always 2 * effective TTL.
  */
-const fetchWithCache = async (key, fetcher) => {
-  const freshEntry = getFreshEntry(key);
+const fetchWithCache = async (key, fetcher, options) => {
+  const ttlMs = resolveTtlMs(options);
+  const staleMaxAgeMs = ttlMs * 2;
+
+  const freshEntry = getFreshEntry(key, ttlMs);
   if (freshEntry) {
     return freshEntry.data;
   }
@@ -121,7 +149,7 @@ const fetchWithCache = async (key, fetcher) => {
       return data;
     } catch (error) {
       if (error && error.code === 'STOCK_PROVIDER_RATE_LIMIT') {
-        const staleEntry = getStaleEntry(key);
+        const staleEntry = getStaleEntry(key, staleMaxAgeMs);
         if (staleEntry) {
           return staleEntry.data;
         }

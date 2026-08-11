@@ -11,6 +11,7 @@
 // history, P&L, and portfolio analytics belong to Member 4 and are NOT built.
 
 const { getQuote } = require('../services/stockService');
+const Transaction = require('../models/Transaction');
 
 const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
 
@@ -132,6 +133,19 @@ const buyStock = async (req, res, next) => {
 
     await user.save();
 
+    // Ledger entry is written only after the balance/holdings change is durable,
+    // so a failed save never leaves a phantom trade in history. A BUY realizes
+    // nothing, so profitLoss stays 0.
+    await Transaction.create({
+      user: user._id,
+      symbol: normalizedSymbol,
+      type: 'BUY',
+      quantity: qty,
+      price: currentPrice,
+      total: totalCost,
+      profitLoss: 0,
+    });
+
     res.status(200).json({
       success: true,
       message: 'Dummy stock purchased successfully',
@@ -213,6 +227,10 @@ const sellStock = async (req, res, next) => {
 
     const proceeds = currentPrice * qty;
 
+    // Captured before the holding is mutated or removed below — a full sell
+    // drops the entry, taking averageBuyPrice with it.
+    const buyPriceAtSale = existing.averageBuyPrice;
+
     if (qty === existing.quantity) {
       // Selling all shares — remove the holding.
       user.holdings = holdings.filter((h) => h.symbol !== normalizedSymbol);
@@ -224,6 +242,17 @@ const sellStock = async (req, res, next) => {
     user.virtualBalance += proceeds;
 
     await user.save();
+
+    // Ledger entry is written only after the balance/holdings change is durable.
+    await Transaction.create({
+      user: user._id,
+      symbol: normalizedSymbol,
+      type: 'SELL',
+      quantity: qty,
+      price: currentPrice,
+      total: proceeds,
+      profitLoss: (currentPrice - buyPriceAtSale) * qty,
+    });
 
     res.status(200).json({
       success: true,

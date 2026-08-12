@@ -634,3 +634,93 @@ pre {
 .holding-detail {
   color: #555;
 }
+
+/* ---------- Cue Card Learning (Module 3 Member 1) ---------- */
+.cue-cards-container {
+  max-width: 950px;
+}
+
+.cue-cards-intro {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.cue-cards-preview-banner {
+  background-color: #e8f0fe;
+  border: 1px solid #aecbfa;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.cue-cards-preview-banner p {
+  margin-bottom: 0;
+}
+
+.cue-cards-preview-banner a {
+  color: #1a73e8;
+  font-weight: 600;
+}
+
+.cue-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.cue-card {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.25rem 1.25rem 0.5rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.cue-card:hover {
+  border-color: #1a73e8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.cue-card-topic {
+  font-size: 1.2rem;
+  color: #1a73e8;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #1a73e8;
+  margin-bottom: 0.25rem;
+}
+
+.cue-card-definition {
+  font-size: 1rem;
+  color: #333;
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.cue-card-example {
+  font-size: 0.95rem;
+  color: #555;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.cue-cards-disclaimer {
+  background-color: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: #8d6e63;
+}
+
+.cue-cards-disclaimer p {
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}

@@ -10,6 +10,7 @@ import StockChart from './pages/StockChart.jsx';
 import StockSearch from './pages/StockSearch.jsx';
 import DummyInvestmentPage from './pages/DummyInvestmentPage.jsx';
 import Portfolio from './pages/Portfolio.jsx';
+import CueCards from './pages/CueCards.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import CompanyDetail from './components/CompanyDetail.jsx';
 
@@ -20,6 +21,7 @@ function App() {
       <Route path="/test" element={<TestConnection />} />
       <Route path="/register" element={<Register />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/learn/cue-cards" element={<CueCards />} />
       <Route
         path="/dashboard"
         element={

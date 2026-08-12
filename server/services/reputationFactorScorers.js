@@ -440,6 +440,88 @@ function scoreDividendRecord(dividendHistory) {
 }
 
 /**
+ * scoreNewsSentiment — pure scorer over the provider-neutral news sentiment
+ * contract produced by stockService.getNewsSentiment():
+ *   {
+ *     status: 'ok' | 'unavailable',
+ *     symbol: string,
+ *     entries: Array<{ sentimentScore: number, relevanceScore: number }>,
+ *     reason?: string
+ *   }
+ *
+ * APPROVED StockWise scoring formula:
+ * - Relevance-weighted average of all valid ticker-specific entries:
+ *     weightedSentiment = Σ(sentimentScore * relevanceScore) / Σ(relevanceScore)
+ * - If no valid entries or total relevance <= 0 -> unavailable.
+ * - Convert weightedSentiment (-0.35..+0.35) to a 0-100 score:
+ *     weightedSentiment <= -0.35 => 0
+ *     weightedSentiment ==  0    => 50
+ *     weightedSentiment >= +0.35 => 100
+ *     between: rawScore = ((weightedSentiment + 0.35) / 0.70) * 100
+ * - Clamp to [0, 100], round to 1 decimal via round1.
+ *
+ * Alpha Vantage's text sentiment label is NEVER used as the numeric score,
+ * and a fake neutral 50 is never assigned when data is missing.
+ */
+function scoreNewsSentiment(newsData) {
+  if (!newsData || typeof newsData !== 'object') {
+    return {
+      score: null,
+      available: false,
+      reason: 'News sentiment provider unavailable',
+    };
+  }
+
+  if (newsData.status !== 'ok') {
+    return {
+      score: null,
+      available: false,
+      reason: newsData.reason || 'News sentiment data unavailable',
+    };
+  }
+
+  const entries = newsData.entries;
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return {
+      score: null,
+      available: false,
+      reason: 'No usable ticker-specific news sentiment data',
+    };
+  }
+
+  let weightedSum = 0;
+  let relevanceSum = 0;
+
+  for (const entry of entries) {
+    const sentimentScore = nullableNumber(entry && entry.sentimentScore);
+    const relevanceScore = nullableNumber(entry && entry.relevanceScore);
+
+    if (sentimentScore === null || relevanceScore === null || relevanceScore <= 0) {
+      continue;
+    }
+
+    weightedSum += sentimentScore * relevanceScore;
+    relevanceSum += relevanceScore;
+  }
+
+  if (relevanceSum <= 0) {
+    return {
+      score: null,
+      available: false,
+      reason: 'Insufficient news sentiment data',
+    };
+  }
+
+  const weightedSentiment = weightedSum / relevanceSum;
+
+  // Approved mapping: -0.35 -> 0, 0 -> 50, +0.35 -> 100 (linear between).
+  const rawScore = ((weightedSentiment + 0.35) / 0.7) * 100;
+  const clamped = Math.min(100, Math.max(0, rawScore));
+
+  return { score: round1(clamped), available: true };
+}
+
+/**
  * Orchestrator: consume the existing getStockBySymbol response shape and
  * return all 7 factors in the exact contract required by
  * reputationScoringEngine.js.
@@ -502,5 +584,6 @@ module.exports = {
   scoreProfitGrowth,
   scoreMarketReputation,
   scoreDividendRecord,
+  scoreNewsSentiment,
   evaluateReputationFactors,
 };

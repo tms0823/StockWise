@@ -219,6 +219,21 @@ const fetchDividends = async (symbol) => {
   });
 };
 
+/**
+ * Fetch raw news sentiment from the Alpha Vantage NEWS_SENTIMENT endpoint.
+ * Reuses the existing fetchAlphaVantage (same key/base URL/error handling).
+ *
+ * NOTE: Live verification showed the provider may ignore/override the
+ * `limit` parameter, so none is passed here — the caller normalizes
+ * whatever feed entries are actually returned.
+ */
+const fetchNewsSentiment = async (symbol) => {
+  return fetchAlphaVantage({
+    function: 'NEWS_SENTIMENT',
+    tickers: symbol,
+  });
+};
+
 const isCompleteDate = (value) => {
   if (typeof value !== 'string') return false;
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -401,6 +416,103 @@ const normalizeDividendHistory = (rawBody, now = new Date()) => {
   };
 };
 
+/**
+ * Normalize a raw Alpha Vantage NEWS_SENTIMENT response into a
+ * provider-neutral, ticker-specific contract.
+ *
+ * Verified real response shape (live test, AAPL):
+ *   {
+ *     items: number,
+ *     sentiment_score_definition: string,
+ *     relevance_score_definition: string,
+ *     feed: Array<{
+ *       title, url, time_published, authors, summary, banner_image,
+ *       source, category_within_source, source_domain, topics,
+ *       overall_sentiment_score: number,
+ *       overall_sentiment_label: string,
+ *       ticker_sentiment: Array<{
+ *         ticker: string,
+ *         relevance_score: string,           // e.g. "1.000000"
+ *         ticker_sentiment_score: string,    // e.g. "0.476902"
+ *         ticker_sentiment_label: string
+ *       }>
+ *     }>
+ *   }
+ *
+ * Contract:
+ *   {
+ *     status: 'ok' | 'unavailable',
+ *     symbol: string,
+ *     entries: Array<{ sentimentScore: number, relevanceScore: number }>,
+ *     reason?: string
+ *   }
+ *
+ * Rules:
+ * - Only the ticker-specific entry whose `ticker` EXACTLY matches the
+ *   requested symbol is used. overall_sentiment_* is intentionally ignored
+ *   for the Company Reputation factor.
+ * - ticker_sentiment_score and relevance_score arrive as strings; they are
+ *   validated and converted to finite numbers.
+ * - Only entries with a finite sentiment score, a finite relevance score,
+ *   and relevance > 0 are kept.
+ * - No fabricated or neutral values are ever injected.
+ */
+const normalizeNewsSentiment = (rawBody, symbol) => {
+  const normalizedSymbol = normalizeSymbol(symbol);
+
+  if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
+    return {
+      status: 'unavailable',
+      symbol: normalizedSymbol,
+      reason: 'Malformed news sentiment data',
+    };
+  }
+
+  const feed = rawBody.feed;
+  if (!Array.isArray(feed)) {
+    return {
+      status: 'unavailable',
+      symbol: normalizedSymbol,
+      reason: 'Malformed news sentiment data',
+    };
+  }
+
+  const entries = [];
+
+  for (const article of feed) {
+    if (!article || typeof article !== 'object' || !Array.isArray(article.ticker_sentiment)) {
+      continue;
+    }
+
+    for (const ts of article.ticker_sentiment) {
+      if (!ts || ts.ticker !== normalizedSymbol) {
+        continue;
+      }
+
+      const sentimentScore = toNumber(ts.ticker_sentiment_score);
+      const relevanceScore = toNumber(ts.relevance_score);
+
+      if (sentimentScore !== null && relevanceScore !== null && relevanceScore > 0) {
+        entries.push({ sentimentScore, relevanceScore });
+      }
+    }
+  }
+
+  if (entries.length === 0) {
+    return {
+      status: 'unavailable',
+      symbol: normalizedSymbol,
+      reason: 'No usable ticker-specific news sentiment data',
+    };
+  }
+
+  return {
+    status: 'ok',
+    symbol: normalizedSymbol,
+    entries,
+  };
+};
+
 // Dividend history changes slowly (~24h fresh TTL; bounded stale fallback
 // is 2 * 24h = 48h through the shared cache).
 const DIVIDEND_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -441,6 +553,30 @@ const getDividends = async (symbol) => {
   );
 
   return normalizeDividendHistory(rawBody);
+};
+
+// News sentiment changes frequently; 30-minute fresh TTL (bounded stale
+// fallback is 2 * 30min = 60min through the shared cache).
+const NEWS_CACHE_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Cache-wrapped news sentiment fetch.
+ *
+ * - Caches the RAW provider response, then normalizes it afterward.
+ * - Cache key: news_sentiment:<NORMALIZED_SYMBOL>.
+ * - Uses the 30-minute TTL override; the existing quote/overview/history/
+ *   dividends wrappers are untouched and keep their own TTLs.
+ */
+const getNewsSentiment = async (symbol) => {
+  const normalized = normalizeSymbol(symbol);
+
+  const rawBody = await fetchWithCache(
+    `news_sentiment:${normalized}`,
+    () => fetchNewsSentiment(normalized),
+    { ttlMs: NEWS_CACHE_TTL_MS }
+  );
+
+  return normalizeNewsSentiment(rawBody, normalized);
 };
 
 const getStockBySymbol = async (symbol) => {
@@ -529,6 +665,8 @@ module.exports = {
   getStockBySymbol,
   getStockHistory,
   getDividends,
+  getNewsSentiment,
   normalizeDividendHistory,
+  normalizeNewsSentiment,
   getQuote,
 };

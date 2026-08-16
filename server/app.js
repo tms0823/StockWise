@@ -8,6 +8,8 @@ const marketRoutes = require('./routes/marketRoutes');
 const stockListingRoutes = require('./routes/stockListingRoutes');
 const dummyInvestmentRoutes = require('./routes/dummyInvestmentRoutes');
 const portfolioRoutes = require('./routes/portfolioRoutes');
+const watchlistRoutes = require('./routes/watchlistRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -25,6 +27,8 @@ app.use('/api/market', marketRoutes);
 app.use('/api/companies', stockListingRoutes);
 app.use('/api/dummy-investment', dummyInvestmentRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler for unknown API routes
 app.use(notFound);

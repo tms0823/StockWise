@@ -2,12 +2,23 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { completeCueCard, getLearningProgress } from '../services/learningService';
 
 function CueCards() {
   const { user } = useAuth();
   const [cards, setCards] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [readTopics, setReadTopics] = useState([]);
+
+  const handleMarkAsRead = async (topic) => {
+    try {
+      await completeCueCard(topic);
+      setReadTopics((previous) => [...previous, topic]);
+    } catch {
+      // Leave the topic unmarked so the button stays available to retry.
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +47,31 @@ function CueCards() {
     };
 
     fetchCueCards();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // Seed the checkmarks from stored progress so cards marked in an earlier
+  // visit stay marked. Visitors have no progress, so they start empty.
+  useEffect(() => {
+    if (!user) {
+      setReadTopics([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    getLearningProgress()
+      .then((response) => {
+        if (!cancelled) {
+          setReadTopics(response.data.data?.completedCueCards || []);
+        }
+      })
+      .catch(() => {
+        // Supplementary — a failure just leaves the cards unmarked.
+      });
 
     return () => {
       cancelled = true;
@@ -83,6 +119,14 @@ function CueCards() {
               <Link to={`/quiz/${encodeURIComponent(card.topic)}`}>
                 Take the quiz
               </Link>
+              {user &&
+                (readTopics.includes(card.topic) ? (
+                  <p>✓ Marked as read</p>
+                ) : (
+                  <button type="button" onClick={() => handleMarkAsRead(card.topic)}>
+                    Mark as read
+                  </button>
+                ))}
             </div>
           ))}
         </div>

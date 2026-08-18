@@ -318,6 +318,9 @@ function Quiz() {
         <Link to="/learn/cue-cards" style={styles.link}>
           Back to cue cards
         </Link>
+        <Link to="/learn/progress" style={{ ...styles.link, marginLeft: '16px' }}>
+          View your progress
+        </Link>
       </div>
     </div>
   );

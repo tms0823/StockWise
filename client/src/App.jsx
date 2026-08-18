@@ -13,6 +13,7 @@ import Portfolio from './pages/Portfolio.jsx';
 import NewsExplainer from './pages/NewsExplainer.jsx';
 import CueCards from './pages/CueCards.jsx';
 import Quiz from './pages/Quiz.jsx';
+import LearningDashboard from './pages/LearningDashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import CompanyDetail from './components/CompanyDetail.jsx';
 
@@ -99,6 +100,16 @@ function App() {
         element={
           <ProtectedRoute>
             <Quiz />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Module 3 — Learning progress dashboard */}
+      <Route
+        path="/learn/progress"
+        element={
+          <ProtectedRoute>
+            <LearningDashboard />
           </ProtectedRoute>
         }
       />

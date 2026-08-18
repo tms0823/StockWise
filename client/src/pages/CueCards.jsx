@@ -80,6 +80,9 @@ function CueCards() {
                   <strong>Example:</strong> {card.example}
                 </p>
               )}
+              <Link to={`/quiz/${encodeURIComponent(card.topic)}`}>
+                Take the quiz
+              </Link>
             </div>
           ))}
         </div>

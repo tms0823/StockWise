@@ -10,6 +10,7 @@ const dummyInvestmentRoutes = require('./routes/dummyInvestmentRoutes');
 const portfolioRoutes = require('./routes/portfolioRoutes');
 const newsRoutes = require('./routes/newsRoutes');
 const cueCardRoutes = require('./routes/cueCardRoutes');
+const learningRoutes = require('./routes/learningRoutes');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -29,6 +30,7 @@ app.use('/api/dummy-investment', dummyInvestmentRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/cue-cards', cueCardRoutes);
+app.use('/api/learning', learningRoutes);
 
 // 404 handler for unknown API routes
 app.use(notFound);

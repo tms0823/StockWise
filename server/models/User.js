@@ -55,6 +55,34 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+    learningProgress: {
+      completedCueCards: {
+        type: [String],
+        default: [],
+      },
+      quizAttempts: [
+        {
+          topic: {
+            type: String,
+            required: true,
+          },
+          score: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          totalQuestions: {
+            type: Number,
+            required: true,
+            min: 1,
+          },
+          completedAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+    },
   },
   {
     timestamps: true,

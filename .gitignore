@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Stray root lockfile — the real ones live in client/ and server/ and are tracked
+/package-lock.json
+
 # Environment variables
 .env
 

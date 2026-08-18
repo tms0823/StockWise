@@ -25,6 +25,9 @@ function Home() {
           </button>{' '}
           <Link to="/test" className="btn">
             Test Server Connection
+          </Link>{' '}
+          <Link to="/learn/cue-cards" className="btn">
+            Learn Stock Basics
           </Link>
         </>
       ) : (
@@ -37,6 +40,9 @@ function Home() {
           </Link>{' '}
           <Link to="/test" className="btn">
             Test Server Connection
+          </Link>{' '}
+          <Link to="/learn/cue-cards" className="btn">
+            Learn Stock Basics
           </Link>
         </>
       )}

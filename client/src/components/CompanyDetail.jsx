@@ -10,6 +10,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import ReputationScoreCard from './ReputationScoreCard';
+import InvestmentSuggestionPanel from './InvestmentSuggestionPanel';
 
 // Map the CompanyDetail timeframe buttons to the backend history ranges.
 // The backend supports 1d, 1w, 1m, 3m, 1y — 5Y falls back to 1y.
@@ -20,6 +21,7 @@ const TIMEFRAME_TO_RANGE = {
   '1Y': '1y',
   '5Y': '1y',
 };
+
 const formatRatioPercent = (value, signed = false) => {
   if (value === null || value === undefined) return 'N/A';
 
@@ -34,6 +36,7 @@ const formatRatioPercent = (value, signed = false) => {
 
   return `${percent.toFixed(2)}%`;
 };
+
 export default function CompanyDetail() {
   const { symbol: urlSymbol } = useParams();
   const navigate = useNavigate();
@@ -361,6 +364,9 @@ export default function CompanyDetail() {
         loading={reputationLoading}
         error={reputationError}
       />
+
+      {/* 3b. Investment Suggestion Status & Risk Indicator */}
+      <InvestmentSuggestionPanel symbol={symbol} />
 
       {/* 4. Financial Indicator Display Grid */}
       <div

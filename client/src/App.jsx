@@ -10,6 +10,7 @@ import StockChart from './pages/StockChart.jsx';
 import StockSearch from './pages/StockSearch.jsx';
 import DummyInvestmentPage from './pages/DummyInvestmentPage.jsx';
 import Portfolio from './pages/Portfolio.jsx';
+import NewsExplainer from './pages/NewsExplainer.jsx';
 import CueCards from './pages/CueCards.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import CompanyDetail from './components/CompanyDetail.jsx';
@@ -77,6 +78,16 @@ function App() {
         element={
           <ProtectedRoute>
             <Portfolio />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Module 3 — Beginner Market News Explanation */}
+      <Route
+        path="/learn/news-explainer"
+        element={
+          <ProtectedRoute>
+            <NewsExplainer />
           </ProtectedRoute>
         }
       />

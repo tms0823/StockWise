@@ -579,6 +579,29 @@ const getNewsSentiment = async (symbol) => {
   return normalizeNewsSentiment(rawBody, normalized);
 };
 
+/**
+ * Cache-wrapped RAW news sentiment fetch for the News Explainer feature.
+ *
+ * IMPORTANT: Uses the EXACT same cache key (`news_sentiment:<SYMBOL>`) and
+ * the EXACT same 30-minute TTL (NEWS_CACHE_TTL_MS) as getNewsSentiment(),
+ * so the Company Reputation Score and the News Explainer share ONE cached
+ * provider response and never issue duplicate Alpha Vantage NEWS_SENTIMENT
+ * calls for the same symbol.
+ *
+ * Unlike getNewsSentiment(), this returns the RAW provider body so the
+ * News Explainer service can run its own normalizeNewsArticles() normalizer.
+ * The existing normalizeNewsSentiment() contract is NOT touched.
+ */
+const getRawNewsSentiment = async (symbol) => {
+  const normalized = normalizeSymbol(symbol);
+
+  return fetchWithCache(
+    `news_sentiment:${normalized}`,
+    () => fetchNewsSentiment(normalized),
+    { ttlMs: NEWS_CACHE_TTL_MS }
+  );
+};
+
 const getStockBySymbol = async (symbol) => {
   const normalized = normalizeSymbol(symbol);
 
@@ -666,6 +689,7 @@ module.exports = {
   getStockHistory,
   getDividends,
   getNewsSentiment,
+  getRawNewsSentiment,
   normalizeDividendHistory,
   normalizeNewsSentiment,
   getQuote,

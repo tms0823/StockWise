@@ -55,6 +55,26 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+    watchlist: [
+      {
+        symbol: {
+          type: String,
+          required: true,
+          uppercase: true,
+          trim: true,
+        },
+        addedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        priceAlertBaseline: {
+          type: Number,
+        },
+        reputationBaseline: {
+          type: Number,
+        },
+      },
+    ],
     learningProgress: {
       completedCueCards: {
         type: [String],

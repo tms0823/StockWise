@@ -10,6 +10,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import ReputationScoreCard from './ReputationScoreCard';
+import { addToWatchlist, removeFromWatchlist } from '../services/watchlistService';
 
 // Map the CompanyDetail timeframe buttons to the backend history ranges.
 // The backend supports 1d, 1w, 1m, 3m, 1y — 5Y falls back to 1y.
@@ -47,7 +48,9 @@ export default function CompanyDetail() {
   const [reputationError, setReputationError] = useState(null);
   const [timeframe, setTimeframe] = useState('1M');
   const [chartData, setChartData] = useState([]);
-  const [watchlist, setWatchlist] = useState(['AAPL', 'NVDA']);
+  const [isWatched, setIsWatched] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchlistError, setWatchlistError] = useState(null);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [shares, setShares] = useState(5);
   const [tradeMsg, setTradeMsg] = useState('');
@@ -150,11 +153,47 @@ export default function CompanyDetail() {
     };
   }, [symbol]);
 
-  const toggleWatchlist = () => {
-    // No backend watchlist route exists — keep it local-only.
-    setWatchlist((prev) =>
-      prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol]
-    );
+  // Load the persisted watchlist state for the displayed company.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadWatchlistState = async () => {
+      try {
+        const res = await api.get('/watchlist');
+        if (cancelled) return;
+        const items = res.data.data || [];
+        setIsWatched(items.some((item) => item.symbol === symbol));
+      } catch (err) {
+        if (!cancelled) {
+          setWatchlistError('Unable to load watchlist state.');
+        }
+      }
+    };
+
+    loadWatchlistState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol]);
+
+  const toggleWatchlist = async () => {
+    setWatchlistLoading(true);
+    setWatchlistError(null);
+    try {
+      if (isWatched) {
+        await removeFromWatchlist(symbol);
+        setIsWatched(false);
+      } else {
+        await addToWatchlist(symbol);
+        setIsWatched(true);
+      }
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'Unable to update watchlist';
+      setWatchlistError(message);
+    } finally {
+      setWatchlistLoading(false);
+    }
   };
 
   const executeBuy = (e) => {
@@ -195,7 +234,7 @@ export default function CompanyDetail() {
     );
   }
 
-  const isSaved = watchlist.includes(symbol);
+  const isSaved = isWatched;
   const isPos = (stock.change ?? 0) >= 0;
   const sector = stock.sector || 'N/A';
   const industry = stock.industry || 'N/A';
@@ -278,17 +317,28 @@ export default function CompanyDetail() {
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
           <button
             onClick={toggleWatchlist}
+            disabled={watchlistLoading}
             style={{
               background: 'rgba(255,255,255,0.08)',
               border: '1px solid rgba(255,255,255,0.15)',
               color: '#fff',
               padding: '10px 18px',
               borderRadius: '8px',
-              cursor: 'pointer',
+              cursor: watchlistLoading ? 'default' : 'pointer',
+              opacity: watchlistLoading ? 0.6 : 1,
             }}
           >
-            {isSaved ? '✓ In Watchlist' : '+ Add to Watchlist'}
+            {watchlistLoading
+              ? 'Updating...'
+              : isSaved
+                ? '✓ In Watchlist'
+                : '+ Add to Watchlist'}
           </button>
+          {watchlistError && (
+            <span style={{ color: '#f43f5e', fontSize: '0.8rem', alignSelf: 'center' }}>
+              {watchlistError}
+            </span>
+          )}
           <button
             onClick={() => setIsTradeModalOpen(true)}
             style={{

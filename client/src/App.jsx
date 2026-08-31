@@ -10,6 +10,10 @@ import StockChart from './pages/StockChart.jsx';
 import StockSearch from './pages/StockSearch.jsx';
 import DummyInvestmentPage from './pages/DummyInvestmentPage.jsx';
 import Portfolio from './pages/Portfolio.jsx';
+import NewsExplainer from './pages/NewsExplainer.jsx';
+import CueCards from './pages/CueCards.jsx';
+import Quiz from './pages/Quiz.jsx';
+import LearningDashboard from './pages/LearningDashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import CompanyDetail from './components/CompanyDetail.jsx';
 
@@ -20,6 +24,7 @@ function App() {
       <Route path="/test" element={<TestConnection />} />
       <Route path="/register" element={<Register />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/learn/cue-cards" element={<CueCards />} />
       <Route
         path="/dashboard"
         element={
@@ -75,6 +80,36 @@ function App() {
         element={
           <ProtectedRoute>
             <Portfolio />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Module 3 — Beginner Market News Explanation */}
+      <Route
+        path="/learn/news-explainer"
+        element={
+          <ProtectedRoute>
+            <NewsExplainer />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Module 3 — Cue card quiz */}
+      <Route
+        path="/quiz/:topic"
+        element={
+          <ProtectedRoute>
+            <Quiz />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Module 3 — Learning progress dashboard */}
+      <Route
+        path="/learn/progress"
+        element={
+          <ProtectedRoute>
+            <LearningDashboard />
           </ProtectedRoute>
         }
       />

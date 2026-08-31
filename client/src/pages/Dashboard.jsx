@@ -177,7 +177,14 @@ function Dashboard() {
           My Portfolio
         </button>
         <button type="button" className="btn" onClick={() => navigate('/search')}>
+        <button type="button" className="btn" onClick={() => navigate('/learn/cue-cards')}>
+          Learn — Cue Cards
+        </button>
+        <button type="button" className="btn" onClick={() => navigate('/company/AAPL')}>
           Company Profile & Financial Indicators
+        </button>
+        <button type="button" className="btn" onClick={() => navigate('/learn/news-explainer')}>
+          Explain Market News
         </button>
         <button type="button" className="btn" onClick={handleLogout}>
           Logout

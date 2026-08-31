@@ -14,6 +14,7 @@ import NewsExplainer from './pages/NewsExplainer.jsx';
 import CueCards from './pages/CueCards.jsx';
 import Quiz from './pages/Quiz.jsx';
 import LearningDashboard from './pages/LearningDashboard.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import CompanyDetail from './components/CompanyDetail.jsx';
 
@@ -113,7 +114,14 @@ function App() {
           </ProtectedRoute>
         }
       />
-
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/company/:symbol"
         element={

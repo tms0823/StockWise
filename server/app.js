@@ -15,6 +15,7 @@ const cueCardRoutes = require('./routes/cueCardRoutes');
 const learningRoutes = require('./routes/learningRoutes');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/admin', adminRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/stocks', stockRoutes);

@@ -185,6 +185,16 @@ function Dashboard() {
         <button type="button" className="btn" onClick={() => navigate('/learn/news-explainer')}>
           Explain Market News
         </button>
+         {user.role === 'admin' && (
+          <button
+            type="button"
+            className="btn"
+            style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }}
+            onClick={() => navigate('/admin')}
+          >
+            Admin Dashboard
+          </button>
+        )}
         <button type="button" className="btn" onClick={handleLogout}>
           Logout
         </button>
